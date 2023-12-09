@@ -1,0 +1,237 @@
+-- Create tables
+
+CREATE TABLE Customer (
+    customer_id INT NOT NULL,
+    first_name VARCHAR2(20),
+    last_name VARCHAR2(20) NOT NULL,
+    dob DATE NOT NULL,
+    phone_num VARCHAR2(20),
+    email VARCHAR2(50) NOT NULL,
+    CONSTRAINT PK_Customer PRIMARY KEY (customer_id)
+);
+
+CREATE TABLE Reservation (
+    reservation_id INT NOT NULL,
+    customer_id INT NOT NULL, 
+    reservation_date DATE DEFAULT SYSDATE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    CONSTRAINT PK_reservation PRIMARY KEY (reservation_id)
+);
+
+CREATE TABLE Flight (
+    flight_id INT NOT NULL,
+    flight_num VARCHAR2(10) NOT NULL,
+    airline_name VARCHAR2(20),
+    departure_time TIMESTAMP NOT NULL,
+    arrival_time TIMESTAMP NOT NULL,
+    departure_location INT NOT NULL,
+    arrival_location INT NOT NULL,
+    CONSTRAINT PK_flight PRIMARY KEY (flight_id)
+);
+
+CREATE TABLE flight_seat (
+    flight_seat_id INT NOT NULL,
+    flight_id INT NOT NULL,
+    reservation_id INT NOT NULL,
+    seat_num INT,
+    seat_class VARCHAR2(20),
+    seat_rate FLOAT,
+    CONSTRAINT PK_flight_seat PRIMARY KEY (flight_seat_id)
+);
+
+CREATE TABLE Hotel (
+    hotel_id INT NOT NULL,
+    hotel_name VARCHAR2(50),
+    hotel_location INT NOT NULL,
+    hotel_phone VARCHAR2(30) NOT NULL,
+    star_rating INT NOT NULL,
+    CONSTRAINT PK_hotel PRIMARY KEY (hotel_id)
+);
+
+CREATE TABLE hotel_room (
+    room_id INT NOT NULL,
+    reservation_id INT NOT NULL,
+    hotel_id INT NOT NULL,
+    room_num INT NOT NULL,
+    room_rate FLOAT,
+    check_in_date DATE NOT NULL,
+    check_out_date DATE NOT NULL,
+    CONSTRAINT PK_hotel_room PRIMARY KEY (room_id)
+);
+
+CREATE TABLE Car (
+    car_id INT NOT NULL,
+    car_class VARCHAR2(20),
+    car_rate FLOAT NOT NULL,
+    CONSTRAINT PK_car PRIMARY KEY (car_id)
+);
+
+CREATE TABLE car_rental (
+    reservation_id INT NOT NULL,
+    car_id INT NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    CONSTRAINT PK_car_rental PRIMARY KEY (reservation_id, car_id)
+);
+
+CREATE TABLE Experience_Place (
+    experience_id INT NOT NULL,
+    experience_name VARCHAR2(50),
+    experience_location INT NOT NULL,
+    experience_phone VARCHAR2(30),
+    CONSTRAINT PK_experience PRIMARY KEY (experience_id)
+);
+
+CREATE TABLE Activity (
+    activity_id INT NOT NULL,
+    activity_name VARCHAR2(50) NOT NULL,
+    activity_description VARCHAR2(100),
+    activity_rate FLOAT NOT NULL,
+    activity_type VARCHAR2(20),
+    CONSTRAINT PK_activity PRIMARY KEY (activity_id)
+);
+
+CREATE TABLE Activity_Booking (
+    act_booking_id INT NOT NULL,
+    experience_id INT NOT NULL,
+    reservation_id INT NOT NULL,
+    activity_id INT NOT NULL,
+    activity_date DATE NOT NULL,
+    CONSTRAINT PK_activity_booking PRIMARY KEY (act_booking_id)
+);
+
+CREATE TABLE Invoice (
+    invoice_id INT NOT NULL,
+    reservation_id INT NOT NULL,
+    issue_date DATE DEFAULT SYSDATE,
+    due_date DATE DEFAULT SYSDATE + 7,
+    amount_due FLOAT DEFAULT 0.00,
+    CONSTRAINT PK_invoice PRIMARY KEY (invoice_id)
+);
+
+CREATE TABLE Location (
+    location_id INT NOT NULL,
+    street_address VARCHAR2(100),
+    postal_code VARCHAR2(10),
+    city VARCHAR2(50),
+    country VARCHAR2(50),
+    CONSTRAINT PK_location PRIMARY KEY (location_id)
+);
+
+-- Constraints Reservations table 
+ALTER TABLE Reservation
+ADD CONSTRAINT FK_CustomerReservation
+FOREIGN KEY (customer_id) REFERENCES Customer(customer_id);
+
+ALTER TABLE Reservation
+ADD CONSTRAINT CHK_ReservationDate
+CHECK (start_date < end_date);
+
+--Constraints Flights table 
+--Foreign keys for arrival and departure location
+ALTER TABLE Flight
+ADD CONSTRAINT FK_FlightDepart
+FOREIGN KEY (departure_location) REFERENCES Location(location_id);
+
+ALTER TABLE Flight
+ADD CONSTRAINT FK_FlightArrival
+FOREIGN KEY (arrival_location) REFERENCES Location(location_id);
+
+-- Constraints Flight_seat table 
+-- FK for flight_num 
+ALTER TABLE flight_seat
+ADD CONSTRAINT FK_FlightId
+FOREIGN KEY (flight_id) REFERENCES Flight(flight_id);
+
+-- FK for reservation_id
+ALTER TABLE flight_seat
+ADD CONSTRAINT FK_reservationid
+FOREIGN KEY (reservation_id) REFERENCES Reservation(reservation_id);
+
+-- seat_class domain {first, business, economy}
+ALTER TABLE flight_seat
+ADD CONSTRAINT CHK_FlightSeatClass
+CHECK (UPPER(seat_class) = 'FIRST' OR UPPER(seat_class) = 'BUSINESS' OR UPPER(seat_class) = 'ECONOMY');
+
+--Constraints Hotel table 
+--FK for hotel_location
+ALTER TABLE Hotel
+ADD CONSTRAINT FK_HotelLocation
+FOREIGN KEY (hotel_location) REFERENCES Location(location_id);
+
+--domain for star rating (1-5)
+ALTER TABLE Hotel 
+ADD CONSTRAINT valid_hotel_star_rating 
+CHECK (star_rating >= 1 and star_rating <= 5); 
+
+
+--Constraints hotel_room table 
+--FK for res_id
+ALTER TABLE hotel_room
+ADD CONSTRAINT FK_hotelroom_resid 
+FOREIGN KEY (reservation_id) REFERENCES Reservation(reservation_id);
+
+--FK for hotel_id
+ALTER TABLE hotel_room
+ADD CONSTRAINT FK_hotelroom_hotelid
+FOREIGN KEY (hotel_id) REFERENCES Hotel(hotel_id);
+
+--check_in_date < check_out_date
+ALTER TABLE hotel_room
+ADD CONSTRAINT valid_checkin_date
+CHECK (check_in_date < check_out_date);
+
+
+--Constraints car_rental table 
+--start date must be before end date
+ALTER TABLE car_rental 
+ADD CONSTRAINT valid_dates 
+CHECK (start_date < end_date);
+
+-- FK for reservation 
+ALTER TABLE car_rental 
+ADD CONSTRAINT FK_resid 
+FOREIGN KEY (reservation_id) REFERENCES Reservation(reservation_id);
+
+-- FK for car_id 
+ALTER TABLE car_rental 
+ADD CONSTRAINT FK_carid
+FOREIGN KEY (car_id) REFERENCES Car(car_id);
+
+-- Constraints car table 
+ALTER TABLE Car 
+ADD CONSTRAINT valid_car_class
+CHECK (UPPER(car_class) IN ('COMPACT', 'SEDAN', 'SUV', 'LUXURY'));
+
+--Constraints Invoice table
+--FK for reservation_id
+ALTER TABLE Invoice 
+ADD CONSTRAINT FK_invoice_resid
+FOREIGN KEY (reservation_id) REFERENCES Reservation(reservation_id); 
+
+--due date is at least 7 days later from issue date
+ALTER TABLE Invoice
+ADD CONSTRAINT valid_due_date_issue_date 
+CHECK ((due_date - issue_date) >= 7);
+
+-- Constraints for activity_booking table 
+-- FK for activity_id
+ALTER TABLE activity_booking
+ADD CONSTRAINT FK_activity_id 
+FOREIGN KEY (activity_id) REFERENCES Activity(activity_id); 
+
+-- FK for experience_id
+ALTER TABLE activity_booking
+ADD CONSTRAINT FK_experience_id
+FOREIGN KEY (experience_id) REFERENCES Experience_place(experience_id);
+
+-- FK for reservation_id 
+ALTER TABLE activity_booking
+ADD CONSTRAINT FK_reservation_id
+FOREIGN KEY (reservation_id) REFERENCES Reservation(reservation_id);
+
+-- Constraints for Experience table
+ALTER TABLE Experience_place
+ADD CONSTRAINT FK_experience_location
+FOREIGN KEY (experience_location) REFERENCES Location(location_id);
